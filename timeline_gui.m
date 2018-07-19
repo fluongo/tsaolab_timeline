@@ -56,13 +56,19 @@ function timeline_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 daqreset
-handles.s = daq.createSession('mcc');
+try
+    handles.s = daq.createSession('ni');
+    handles.nChannels_to_use = 8;
+    [ch, idx] = addAnalogInputChannel(handles.s,'Dev3',0:handles.nChannels_to_use-1,'Voltage');
+catch
+    handles.s = daq.createSession('mcc');
+    handles.nChannels_to_use = 8;
+    [ch, idx] = addAnalogInputChannel(handles.s,'Board0',0:handles.nChannels_to_use-1,'Voltage');
+
+end
 handles.s.Rate = 5000;
 handles.s.DurationInSeconds = 200;
 
-handles.nChannels_to_use = 8;
-
-[ch, idx] = addAnalogInputChannel(handles.s,'Board0',0:handles.nChannels_to_use-1,'Voltage');
 
 for i = 1:length(idx)
     ch(idx(i)).TerminalConfig = 'SingleEnded'

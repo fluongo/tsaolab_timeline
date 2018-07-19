@@ -1,6 +1,6 @@
 % Initial script for interfacing between MC 1208-fs DAQ, whicvh will allow
 % the sampling of 8 analog signals at 5000Hz
-
+clear all
 devices = daq.getDevices
 
 %% Single Channel example...
@@ -10,7 +10,7 @@ s = daq.createSession('mcc');
 s.Rate = 5000;
 s.DurationInSeconds = 200;
 
-nChannels_to_use = 3;
+nChannels_to_use = 8;
 
 [ch, idx] = addAnalogInputChannel(s,'Board0',0:nChannels_to_use-1,'Voltage');
 
@@ -19,7 +19,8 @@ for i = 1:length(idx)
 end
 
 %%
-log_fn = 'c:\Users\ernie\Desktop\log7.bin'
+
+log_fn = 'c:\Users\ernie\Desktop\log7_test.bin'
 timestamps_fn = [log_fn(1:end-4), '_ts.bin']
 
 fid_data = fopen(log_fn,'w');
@@ -31,7 +32,7 @@ lh2 = addlistener(s,'DataAvailable',@(src, event)log_data(src, event, fid_data, 
 
 s.IsContinuous = true;
 s.startBackground;
-pause(10)
+ pause(100)
 s.stop;
 delete(lh);delete(lh2)
 fclose(fid_data);fclose(fid_ts);
