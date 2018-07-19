@@ -58,12 +58,17 @@ handles.output = hObject;
 daqreset
 try
     handles.s = daq.createSession('ni');
+    tmp = daq.getDevices;
+    handles.device_id = tmp.ID;
     handles.nChannels_to_use = 8;
-    [ch, idx] = addAnalogInputChannel(handles.s,'Dev4',0:handles.nChannels_to_use-1,'Voltage');
+    [ch, idx] = addAnalogInputChannel(handles.s,handles.device_id,0:handles.nChannels_to_use-1,'Voltage');
 catch
     handles.s = daq.createSession('mcc');
+    tmp = daq.getDevices;
+    handles.device_id = tmp.ID;
+
     handles.nChannels_to_use = 8;
-    [ch, idx] = addAnalogInputChannel(handles.s,'Board0',0:handles.nChannels_to_use-1,'Voltage');
+    [ch, idx] = addAnalogInputChannel(handles.s,handles.device_id,0:handles.nChannels_to_use-1,'Voltage');
 
 end
 handles.s.Rate = 5000;
@@ -97,9 +102,14 @@ function start_button_Callback(hObject, eventdata, handles)
 % hObject    handle to start_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-dir_to_write = pwd;
-handles.log_fn = fullfile(dir_to_write, sprintf('test_%s.bin', datestr(now,'mm-dd-yyyy HH-MM')));
-handles.timestamps_fn = [handles.log_fn(1:end-4), '_ts.bin']
+
+handles.fn_sub = sprintf('timeline_%s', datestr(now,'mm-dd-yyyy_HH-MM'))
+% Set write directory and make
+handles.dir_write = fullfile(pwd, handles.fn_sub);
+mkdir(handles.dir_write); % Make directory
+
+handles.log_fn = fullfile(dir_to_write, [handles.fn_sub, '.bin']);
+handles.timestamps_fn = [handles.log_fn(1:end-4), '_ts.bin'];
 
 handles.fid_data = fopen(handles.log_fn,'w');
 handles.fid_ts = fopen(handles.timestamps_fn,'w');
@@ -131,7 +141,7 @@ function log_data_sub(src, evt, fid_data, fid_ts)
 
 % Write the data with low precision and the timestamps with high..
 % Remember to transpose data so it is read out appropriately..
-fwrite(fid_data,evt.Data','uint8');
+fwrite(fid_data,evt.Data','single');
 fwrite(fid_ts, evt.TimeStamps, 'double');
 
 % --- Executes on button press in stop_button.
@@ -143,6 +153,18 @@ function stop_button_Callback(hObject, eventdata, handles)
 handles.s.stop;
 delete(handles.lh);delete(handles.lh2)
 fclose(handles.fid_data);fclose(handles.fid_ts);
+
+% Read in the data and Save as .mat
+fid2 = fopen(handles.log_fn,'r');
+[data,~] = fread(fid2,[handles.nChannels_to_use,inf],'single');
+data = single(data);
+fclose(fid2);
+
+fid2 = fopen(handles.timestamps_fn,'r');
+[timestamps,~] = fread(fid2,[1,inf],'double');
+fclose(fid2);
+
+save(fullfile(handles.dir_to_write, [handles.sub_fn, '.mat']), 'timestamps', 'data', '-v7.3')
 
 % Update handles structure
 guidata(hObject, handles);
