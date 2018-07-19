@@ -59,7 +59,7 @@ daqreset
 try
     handles.s = daq.createSession('ni');
     handles.nChannels_to_use = 8;
-    [ch, idx] = addAnalogInputChannel(handles.s,'Dev3',0:handles.nChannels_to_use-1,'Voltage');
+    [ch, idx] = addAnalogInputChannel(handles.s,'Dev4',0:handles.nChannels_to_use-1,'Voltage');
 catch
     handles.s = daq.createSession('mcc');
     handles.nChannels_to_use = 8;
@@ -97,8 +97,8 @@ function start_button_Callback(hObject, eventdata, handles)
 % hObject    handle to start_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-handles.log_fn = sprintf('C:\\Users\\ernie\\Desktop\\test_%s.bin', datestr(now,'mm-dd-yyyy HH-MM'));
+dir_to_write = pwd;
+handles.log_fn = fullfile(dir_to_write, sprintf('test_%s.bin', datestr(now,'mm-dd-yyyy HH-MM')));
 handles.timestamps_fn = [handles.log_fn(1:end-4), '_ts.bin']
 
 handles.fid_data = fopen(handles.log_fn,'w');
