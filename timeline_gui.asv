@@ -112,7 +112,7 @@ handles.fn_sub = sprintf('timeline_%s', datestr(now,'mm-dd-yyyy_HH-MM'))
 % Set write directory and make
 handles.dir_write = fullfile(handles.save_dir, handles.fn_sub);
 mkdir(handles.dir_write); % Make directory
-set(handles.text_savefn, 'String', handles.fn_sub); % Update the directory
+set(handles.edit_fn, 'String', handles.fn_sub); % Update the directory
 
 handles.log_fn = fullfile(handles.dir_write, [handles.fn_sub, '.bin']);
 handles.timestamps_fn = [handles.log_fn(1:end-4), '_ts.bin'];
@@ -122,7 +122,7 @@ handles.fid_ts = fopen(handles.timestamps_fn,'w');
 
 handles.s.NotifyWhenDataAvailableExceeds =3*5000;
 handles.lh = addlistener(handles.s,'DataAvailable', @(src,event) quick_plot_sub(event.TimeStamps, event.Data, handles));
-handles.lh2 = addlistener(handles.s,'DataAvailable',@(src, event)log_data_sub(src, event, handles.fid_data, handles.fid_ts, handles));
+handles.lh2 = addlistener(handles.s,'DataAvailable',@(src, event)log_data_sub(src, event, handles.fid_data, handles.fid_ts));
 
 
 % Initiate tic..
@@ -144,7 +144,7 @@ for i = 1:nChannels
     %title(sprintf('Channel %d', i)); ylim([-0.5 5.5])
 end
 
-function log_data_sub(src, evt, fid_data, fid_ts, handles)
+function log_data_sub(src, evt, fid_data, fid_ts)
 % Add the time stamp and the data values to data. To write data sequentially,
 % transpose the matrix.
 
@@ -152,11 +152,6 @@ function log_data_sub(src, evt, fid_data, fid_ts, handles)
 % Remember to transpose data so it is read out appropriately..
 fwrite(fid_data,evt.Data','single');
 fwrite(fid_ts, evt.TimeStamps, 'double');
-
-% Update elapsed time for experiment..
-e_time = round(toc);
-set(handles.text_elapsed_exp_time, 'String', sprintf('Elapsed experimental time is %d minutes and %d seconds', floor(e_time/60), mod(e_time, 60)))
-
 
 % --- Executes on button press in stop_button.
 function stop_button_Callback(hObject, eventdata, handles)
@@ -182,7 +177,7 @@ fclose(fid2);
 % Load in the labels callback
 labels = cell(1, 8);
 for i = 1:8
-    labels{i} = get(handles.(sprintf('edit%d', i)), 'String');
+    labels{i} = get(handles.(sprintf('edit%d', i)), 'String')
 end
 
 disp('WRITING DATA TO MAT FILE....')
