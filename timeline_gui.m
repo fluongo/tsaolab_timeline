@@ -1,6 +1,6 @@
 function varargout = timeline_gui(varargin)
 % TIMELINE_GUI MATLAB code for timeline_gui.fig
-%      TIMELINE_GUI, by itself, creates a new TIMELINE_GUI or raises the existing
+%      TIMELINE_GUI, by itself, creates a new TIMELINdsaE_GUI or raises the existing
 %      singleton*.
 %
 %      H = TIMELINE_GUI returns the handle to a new TIMELINE_GUI or the handle to
@@ -22,7 +22,7 @@ function varargout = timeline_gui(varargin)
 
 % Edit the above text to modify the response to help timeline_gui
 
-% Last Modified by GUIDE v2.5 19-Jul-2018 16:50:05
+% Last Modified by GUIDE v2.5 04-Dec-2018 18:07:35
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -55,28 +55,12 @@ function timeline_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for timeline_gui
 handles.output = hObject;
 
-daqreset
 try
     handles.s = daq.createSession('ni');
-    tmp = daq.getDevices;
-    handles.device_id = tmp.ID;
-    handles.nChannels_to_use = 8;
-    [ch, idx] = addAnalogInputChannel(handles.s,handles.device_id,0:handles.nChannels_to_use-1,'Voltage');
+    handles.device_type = 'ni'
 catch
     handles.s = daq.createSession('mcc');
-    tmp = daq.getDevices;
-    handles.device_id = tmp.ID;
-
-    handles.nChannels_to_use = 8;
-    [ch, idx] = addAnalogInputChannel(handles.s,handles.device_id,0:handles.nChannels_to_use-1,'Voltage');
-
-end
-handles.s.Rate = 5000;
-handles.s.DurationInSeconds = 200;
-
-
-for i = 1:length(idx)
-    ch(idx(i)).TerminalConfig = 'SingleEnded'
+    handles.device_type = 'mcc'
 end
 
 % Set the save directory
@@ -108,6 +92,27 @@ function start_button_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+
+% Initialize the channels in the session that will need to be used here....
+
+
+% Initialize the session
+daqreset
+handles.s = daq.createSession(handles.device_type);
+tmp = daq.getDevices;
+handles.device_id = tmp.ID;
+handles.nChannels_to_use = str2num(get(handles.n_chan_record, 'String'));
+[ch, idx] = addAnalogInputChannel(handles.s,handles.device_id,0:handles.nChannels_to_use-1,'Voltage');
+
+% Set the rate to distribute all channels
+handles.s.Rate = floor(40/length(idx))*1000;
+handles.s.IsContinuous = true;
+
+for i = 1:length(idx)
+    ch(idx(i)).TerminalConfig = 'SingleEnded'
+end
+
+
 handles.fn_sub = sprintf('timeline_%s', datestr(now,'mm-dd-yyyy_HH-MM'))
 % Set write directory and make
 handles.dir_write = fullfile(handles.save_dir, handles.fn_sub);
@@ -120,14 +125,14 @@ handles.timestamps_fn = [handles.log_fn(1:end-4), '_ts.bin'];
 handles.fid_data = fopen(handles.log_fn,'w');
 handles.fid_ts = fopen(handles.timestamps_fn,'w');
 
-handles.s.NotifyWhenDataAvailableExceeds =3*5000;
+handles.s.NotifyWhenDataAvailableExceeds =3*handles.s.Rate; % Make this 3 seconds each time
 handles.lh = addlistener(handles.s,'DataAvailable', @(src,event) quick_plot_sub(event.TimeStamps, event.Data, handles));
 handles.lh2 = addlistener(handles.s,'DataAvailable',@(src, event)log_data_sub(src, event, handles.fid_data, handles.fid_ts, handles));
 
 
 % Initiate tic..
 tic
-handles.s.IsContinuous = true;
+handles.is_running = 1;
 handles.s.startBackground;
 
 % Update handles structure
@@ -155,7 +160,8 @@ fwrite(fid_ts, evt.TimeStamps, 'double');
 
 % Update elapsed time for experiment..
 e_time = round(toc);
-set(handles.text_elapsed_exp_time, 'String', sprintf('Elapsed experimental time is %d minutes and %d seconds', floor(e_time/60), mod(e_time, 60)))
+set(handles.text_elapsed_exp_time, 'String', sprintf('Elapsed experimental time is %d minutes and %d seconds, recording %d channels at %d Hz', ...
+    floor(e_time/60), mod(e_time, 60) , handles.nChannels_to_use, handles.s.Rate) )
 
 
 % --- Executes on button press in stop_button.
@@ -165,6 +171,12 @@ function stop_button_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 handles.s.stop;
+
+% Tell the sensor to stop acquiring in case it still is...
+handles.is_running = 1;
+guidata(hObject, handles);
+
+
 delete(handles.lh);delete(handles.lh2)
 fclose(handles.fid_data);fclose(handles.fid_ts);
 
@@ -180,8 +192,8 @@ fid2 = fopen(handles.timestamps_fn,'r');
 fclose(fid2);
 
 % Load in the labels callback
-labels = cell(1, 8);
-for i = 1:8
+labels = cell(1, handles.nChannels_to_use);
+for i = 1:handles.nChannels_to_use
     labels{i} = get(handles.(sprintf('edit%d', i)), 'String');
 end
 
@@ -367,6 +379,71 @@ function edit8_Callback(hObject, eventdata, handles)
 % --- Executes during object creation, after setting all properties.
 function edit8_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit8 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in running_checkbox.
+function running_checkbox_Callback(hObject, eventdata, handles)
+% hObject    handle to running_checkbox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if get(handles.running_checkbox, 'Value') == 1
+    disp('Connecting to sensor')
+    handles.m = MotionSensor(get(handles.adns_port, 'String'));
+    guidata(hObject, handles);
+else
+    disp('disabling sensor')
+    handles.m.delete
+    guidata(hObject, handles);
+end
+% Hint: get(hObject,'Value') returns toggle state of running_checkbox
+
+
+
+function adns_port_Callback(hObject, eventdata, handles)
+% hObject    handle to adns_port (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+
+% Hints: get(hObject,'String') returns contents of adns_port as text
+%        str2double(get(hObject,'String')) returns contents of adns_port as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function adns_port_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to adns_port (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function n_chan_record_Callback(hObject, eventdata, handles)
+% hObject    handle to n_chan_record (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of n_chan_record as text
+%        str2double(get(hObject,'String')) returns contents of n_chan_record as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function n_chan_record_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to n_chan_record (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
