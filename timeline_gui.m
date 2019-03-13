@@ -57,22 +57,69 @@ handles.output = hObject;
 
 try
     handles.s = daq.createSession('ni');
-    handles.device_type = 'ni'
+    handles.device_type = 'ni';
 catch
     handles.s = daq.createSession('mcc');
-    handles.device_type = 'mcc'
+    handles.device_type = 'mcc';
 end
 
 % Set the save directory
-handles.save_dir = uigetdir('SELECT THE SAVE DIRECTORY')
+handles.save_dir = uigetdir('SELECT THE SAVE DIRECTORY');
 cd(handles.save_dir)
 set(handles.text_savedir, 'String', handles.save_dir)
+
 
 % Update handles structure
 guidata(hObject, handles);
 
 % UIWAIT makes timeline_gui wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
+
+function open_udp_server(hObject, eventdata, handles)
+% Opens the udp server
+try
+    disp('here')
+    global sb_server
+    sb_server=udp('localhost', 'LocalPort', 7000);
+    fopen(sb_server);
+    % For keeping server messages
+    global messages messages_count
+    messages_count = 0;
+    messages = [];
+    guidata(hObject, handles);
+    disp('Succesfully opened server on port 7000')
+catch
+    disp('ERROR: Could not open udp server')
+end
+
+function close_udp_server(hObject, eventdata, handles)
+try 
+    global sb_server
+    fclose(sb_server)
+    disp('successfully closed udp server')
+catch
+    disp('ERROR: Could not close udp server')
+end
+
+
+function read_udp_server(handles)
+% Handles incoming messages  
+global messages messages_count sb_server
+
+if sb_server.BytesAvailable > 0
+    m = fgetl(sb_server);
+    if messages_count == 0
+        disp(fprintf('Received message || %s || at time 3.2f seconds after start', m, toc))
+        messages.m = m
+        messages.t = toc;
+        messages_count = messages_count+2;
+    else
+        disp(fprintf('Received message || %s || at time 3.2f seconds after start', m, toc))
+        messages(messages_count).m = m;
+        messages(messages_count).t = toc;
+        messages_count = messages_count+1;
+    end
+end
 
 
 % --- Outputs from this function are returned to the command line.
@@ -109,11 +156,13 @@ handles.s.Rate = floor(40/length(idx))*1000;
 handles.s.IsContinuous = true;
 
 for i = 1:length(idx)
-    ch(idx(i)).TerminalConfig = 'SingleEnded'
+    ch(idx(i)).TerminalConfig = 'SingleEnded';
 end
 
+% Open the udp server
+open_udp_server(hObject, eventdata, handles)
 
-handles.fn_sub = sprintf('timeline_%s', datestr(now,'mm-dd-yyyy_HH-MM'))
+handles.fn_sub = sprintf('timeline_%s', datestr(now,'mm-dd-yyyy_HH-MM'));
 % Set write directory and make
 handles.dir_write = fullfile(handles.save_dir, handles.fn_sub);
 mkdir(handles.dir_write); % Make directory
@@ -149,6 +198,9 @@ for i = 1:nChannels
     %title(sprintf('Channel %d', i)); ylim([-0.5 5.5])
 end
 
+% Do a quick read of the server and update messages...\
+read_udp_server(handles)
+
 function log_data_sub(src, evt, fid_data, fid_ts, handles)
 % Add the time stamp and the data values to data. To write data sequentially,
 % transpose the matrix.
@@ -162,6 +214,7 @@ fwrite(fid_ts, evt.TimeStamps, 'double');
 e_time = round(toc);
 set(handles.text_elapsed_exp_time, 'String', sprintf('Elapsed experimental time is %d minutes and %d seconds, recording %d channels at %d Hz', ...
     floor(e_time/60), mod(e_time, 60) , handles.nChannels_to_use, handles.s.Rate) )
+
 
 
 % --- Executes on button press in stop_button.
@@ -180,6 +233,10 @@ guidata(hObject, handles);
 delete(handles.lh);delete(handles.lh2)
 fclose(handles.fid_data);fclose(handles.fid_ts);
 
+% Close the udp server
+close_udp_server(hObject, eventdata, handles)
+
+
 % Read in the data and Save as .mat
 disp('LOADING IN DATA....')
 fid2 = fopen(handles.log_fn,'r');
@@ -197,8 +254,10 @@ for i = 1:handles.nChannels_to_use
     labels{i} = get(handles.(sprintf('edit%d', i)), 'String');
 end
 
+global messages
+
 disp('WRITING DATA TO MAT FILE....')
-save(fullfile(handles.dir_write, [handles.fn_sub, '.mat']), 'timestamps', 'data', 'labels', '-v7.3')
+save(fullfile(handles.dir_write, [handles.fn_sub, '.mat']), 'timestamps', 'data', 'labels', 'messages', '-v7.3')
 disp('DONE WRITING DATA TO MAT FILE.....')
 
 % Update handles structure
