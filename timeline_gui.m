@@ -82,6 +82,12 @@ try
     global sb_server
     sb_server=udp('localhost', 'LocalPort', 7000);
     fopen(sb_server);
+    % Clear any old messages otherwise they get appended to first message
+    if sb_server.BytesAvailable > 0
+        disp('clearing old messages')
+        tmp = fgetl(sb_server);
+    end
+    
     % For keeping server messages
     global messages messages_count
     messages_count = 0;
@@ -109,12 +115,12 @@ global messages messages_count sb_server
 if sb_server.BytesAvailable > 0
     m = fgetl(sb_server);
     if messages_count == 0
-        disp(fprintf('Received message || %s || at time 3.2f seconds after start', m, toc))
+        disp(fprintf('Received message || %s || at time 3.2%f seconds after start', m, toc))
         messages.m = m
         messages.t = toc;
         messages_count = messages_count+2;
     else
-        disp(fprintf('Received message || %s || at time 3.2f seconds after start', m, toc))
+        disp(fprintf('Received message || %s || at time 3.2%f seconds after start', m, toc))
         messages(messages_count).m = m;
         messages(messages_count).t = toc;
         messages_count = messages_count+1;
