@@ -79,6 +79,7 @@ function open_udp_server(hObject, eventdata, handles)
 % Opens the udp server
 try
     disp('here')
+    set(handles.text_prev_msg, 'String', 'NEW SESSION')
     global sb_server
     sb_server=udp('localhost', 'LocalPort', 7000);
     fopen(sb_server);
@@ -116,7 +117,7 @@ if sb_server.BytesAvailable > 0
     m = fgetl(sb_server);
     if messages_count == 0
         disp(fprintf('Received message || %s || at time 3.2%f seconds after start', m, toc))
-        messages.m = m
+        messages.m = m;
         messages.t = toc;
         messages_count = messages_count+2;
     else
@@ -125,6 +126,8 @@ if sb_server.BytesAvailable > 0
         messages(messages_count).t = toc;
         messages_count = messages_count+1;
     end
+    % Update the box
+    set(handles.text_prev_msg, 'String', char(messages.m));
 end
 
 
