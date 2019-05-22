@@ -117,17 +117,22 @@ if sb_server.BytesAvailable > 0
     m = fgetl(sb_server);
     if messages_count == 0
         disp(fprintf('Received message || %s || at time 3.2%f seconds after start', m, toc))
+        [dir, fn] = fileparts(m);
         messages.m = m;
+        messages.dir = dir; messages.fn = fn;
         messages.t = toc;
         messages_count = messages_count+2;
     else
         disp(fprintf('Received message || %s || at time 3.2%f seconds after start', m, toc))
+        [dir, fn] = fileparts(m);
         messages(messages_count).m = m;
+        messages(messages_count).dir = dir; messages(messages_count).fn = fn;
         messages(messages_count).t = toc;
         messages_count = messages_count+1;
     end
     % Update the box
-    set(handles.text_prev_msg, 'String', char(messages.m));
+    set(handles.text_prev_msg, 'String', char(messages.fn))
+    %set(handles.text_prev_msg, 'String', char(messages.m));
 end
 
 
@@ -183,7 +188,7 @@ handles.timestamps_fn = [handles.log_fn(1:end-4), '_ts.bin'];
 handles.fid_data = fopen(handles.log_fn,'w');
 handles.fid_ts = fopen(handles.timestamps_fn,'w');
 
-handles.s.NotifyWhenDataAvailableExceeds =3*handles.s.Rate; % Make this 3 seconds each time
+handles.s.NotifyWhenDataAvailableExceeds =round(3*handles.s.Rate); % Make this 3 seconds each time
 handles.lh = addlistener(handles.s,'DataAvailable', @(src,event) quick_plot_sub(event.TimeStamps, event.Data, handles));
 handles.lh2 = addlistener(handles.s,'DataAvailable',@(src, event)log_data_sub(src, event, handles.fid_data, handles.fid_ts, handles));
 
