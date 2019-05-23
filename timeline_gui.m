@@ -50,7 +50,7 @@ function timeline_gui_OpeningFcn(hObject, eventdata, handles, varargin)
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to timeline_gui (see VARARGIN)
+% varargin   command line arguments to ti  meline_gui (see VARARGIN)
 
 % Choose default command line output for timeline_gui
 handles.output = hObject;
