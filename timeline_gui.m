@@ -224,7 +224,10 @@ e_time = round(toc);
 set(handles.text_elapsed_exp_time, 'String', sprintf('Elapsed experimental time is %d minutes and %d seconds, recording %d channels at %d Hz', ...
     floor(e_time/60), mod(e_time, 60) , handles.nChannels_to_use, handles.s.Rate) )
 
-
+% Automatically shut off after 8 hours
+if e_time >= 60*60*8
+    stop_button_Callback(hObject, eventdata, handles)
+end
 
 % --- Executes on button press in stop_button.
 function stop_button_Callback(hObject, eventdata, handles)
