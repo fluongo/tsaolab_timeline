@@ -1,7 +1,7 @@
 %Script for loading and recovering the binary file
 
-fn_bin= 'timeline_04-05-2019_11-22.bin'
-ts_bin= 'timeline_04-05-2019_11-22_ts.bin'
+fn_bin= 'timeline_07-12-2019_13-16.bin'
+ts_bin= 'timeline_07-12-2019_13-16_ts.bin'
 labels = {'fUS', 'stim'}
 n_channels = 2
 
